@@ -8,6 +8,7 @@ def main():
     num_pages = functions.num_pages()
 
     driver = functions.open_msdriver()
+    driver.minimize_window()
 
     source = "НКЦКИ"
     counter = 0
