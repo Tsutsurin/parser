@@ -4,7 +4,6 @@ import re
 
 
 def main():
-
     vul_link = f"https://bdu.fstec.ru/vul/{functions.num_url()}"
 
     driver = functions.open_msdriver()
