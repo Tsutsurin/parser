@@ -12,31 +12,31 @@ def main():
     driver.minimize_window()
 
     all_url = []
-    source = "ФСТЭК"
+    source = 'ФСТЭК'
     counter = 0
 
     df = pd.DataFrame(
-        {"№": [""], "Источник": [""], "Дата публикации": [""], "CVE": [""], "CVSS": [""], "Продукты": [""], "Ссылки": [""]})
+        {'№': [''], 'Источник': [''], 'Дата публикации': [''], 'CVE': [''], 'CVSS': [''], 'Продукты': [''], 'Ссылки': ['']})
 
     for page in range(1, num_pages + 1):
         soup = functions.get_soup(driver, fstek_url, page)
-        tds = soup.find_all("td", class_="col-lg-3 col-xs-3")
+        tds = soup.find_all('td', class_='col-lg-3 col-xs-3')
         for td in tds:
-            links = td.find_all("a", class_="confirm-vul")
+            links = td.find_all('a', class_='confirm-vul')
             for link in links:
-                href = link["href"]
-                vul_link = f"https://bdu.fstec.ru{href}"
+                href = link['href']
+                vul_link = f'https://bdu.fstec.ru{href}'
                 all_url.append(vul_link)
 
     for vul_link in all_url:
         try:
             soup = functions.get_soup(driver, vul_link, None)
-            tds = soup.find_all("td")
+            tds = soup.find_all('td')
 
-            product = tds[3].text.strip() + " " + tds[5].text.strip()
+            product = tds[3].text.strip() + ' ' + tds[5].text.strip()
 
             cvss = tds[23].text.strip()
-            pattern = r"\d+(?:,\d+)?"
+            pattern = r'\d+(?:,\d+)?'
             number = re.findall(pattern, cvss)
             size = len(number) - 1
             cvss = number[size].replace(',', '.')
@@ -49,10 +49,10 @@ def main():
 
             counter += 1
 
-            print (f"Обработана уязвимость {vul_link}")
+            print (f'Обработана уязвимость {vul_link}')
 
         except IndexError:
-            print(f"Ошибка при обработке {vul_link}")
+            print(f'Ошибка при обработке {vul_link}')
 
     driver.close()
 
