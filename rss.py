@@ -1,64 +1,75 @@
 import functions
 import time
 from datetime import datetime
+import pandas as pd
 import re
 
-date_input = input('Введите первую дату в формате DD.MM.YYYY: ')
 
-try:
-    date1 = datetime.strptime(date_input, '%d.%m.%Y').date()
-except ValueError:
-    print('Ошибка: Неверный формат введенной даты.')
-    exit()
+def main():
+    date1 = functions.find_date()
 
-driver = functions.open_msdriver()
-driver.minimize_window()
+    driver = functions.open_msdriver()
+    driver.minimize_window()
 
-with open('utilities/rss.txt', 'r') as f:
-    lines = [line.rstrip() for line in f]
+    with open('utilities/rss.txt', 'r') as f:
+        lines = [line.rstrip() for line in f]
 
-for url in lines:
-    driver.get(url)
-    time.sleep(2)
-    soup = functions.get_soup(driver, url, None)
+    counter = 1
+    source = 'NEWS'
+    df = pd.DataFrame(
+        {'№': [''], 'Источник': [''], 'Дата публикации': [''], 'CVE': [''], 'Ссылки': ['']})
 
-    if soup.find('pubdate'):
-        items = soup.find_all('item')
-        for item in items:
-            pubdate = item.find('pubdate').text
-            try:
-                date_object = datetime.strptime(pubdate, '%a, %d %b %Y %H:%M:%S %z').date()
-            except ValueError:
-                date_object = datetime.strptime(pubdate, '%a, %d %b %Y %H:%M:%S %Z').date()
+    for url in lines:
+        driver.get(url)
+        time.sleep(2)
+        soup = functions.get_soup(driver, url, None)
 
-            formatted_date = date_object.strftime('%d.%m.%Y')
+        if soup.find('pubdate'):
+            items = soup.find_all('item')
+            for item in items:
+                pubdate = item.find('pubdate').text
+                try:
+                    date_object = datetime.strptime(pubdate, '%a, %d %b %Y %H:%M:%S %z').date()
+                except ValueError:
+                    date_object = datetime.strptime(pubdate, '%a, %d %b %Y %H:%M:%S %Z').date()
 
-            if date1 <= date_object:
-                print(f'Первая дата ({date_input}) младше или равна второй дате ({formatted_date}).')
+                formatted_date = date_object.strftime('%d.%m.%Y')
 
-                link_tg = item.find("link")
-                link = link_tg.next_sibling
+                if date1 <= date_object:
+                    link_tg = item.find("link")
+                    link = link_tg.next_sibling
+                    print(f'Идет поиск CVE в {link}')
 
-                driver.get(link)
+                    driver.get(link)
+                    soup = functions.get_soup(driver, link, None)
 
-                cve_pattern = re.compile(r'CVE-\d{4}-\d{4,7}')
-                cve_matches = soup.find_all(string=cve_pattern)
+                    cve_pattern = re.compile(r'CVE-\d{4}-\d{4,7}')
+                    cve_matches = soup.find_all(string=cve_pattern)
 
-                if cve_matches:
-                    cve = []
-                    print('Найденные CVE:')
-                    for match in cve_matches:
-                        cve.append(re.findall(cve_pattern, match))
-#   Нужно как-то убрать повторы в списке
-#                    unique_cve = list(set(cve))
-#                    print(unique_cve)
+                    if cve_matches:
+                        for match in cve_matches:
+                            cve = re.findall(cve_pattern, match)
+                            str_cve = ' '.join(set(cve))
 
-                else:
-                    print('CVE не найдены на странице.')
+                        df.at[counter, '№'] = counter
+                        df.at[counter, 'Источник'] = source
+                        df.at[counter, 'Дата публикации'] = formatted_date
+                        df.at[counter, 'CVE'] = str_cve
+                        df.at[counter, 'Ссылки'] = link
 
-            else:
-                print(f'Первая дата ({date_input}) старше второй даты ({formatted_date}).')
-    else:
-        print(f'Ошибка: {url} не содержит "pubdate".')
+                        counter += 1
+                        print(f'На старице {link} найдены следующие CVE: {str_cve}')
+                    else:
+                        print(f'CVE на странице {link} не найдены.')
 
-driver.close()
+        else:
+            print(f'Ошибка: {url} не содержит "pubdate".')
+
+    functions.do_excel(source, df)
+
+    driver.close()
+
+    input()
+
+
+main()
