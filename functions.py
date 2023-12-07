@@ -3,6 +3,7 @@ from selenium.webdriver.edge.service import Service
 from selenium.webdriver.edge.options import Options
 from bs4 import BeautifulSoup
 from datetime import date
+from datetime import datetime
 import pandas as pd
 import re
 
@@ -29,7 +30,7 @@ def get_url():
                     input_url = re.search(r'.*&page=', input_url)
                     return input_url.group()
                 else:
-                    return input_url+'+&page='
+                    return input_url + '+&page='
             else:
                 print('Ошибка ввода данных. Следуйте примеру.\n')
         except ValueError:
@@ -48,6 +49,18 @@ def num_pages():
                 return input_number
         except ValueError:
             print('Ошибка ввода. Ожидались цифры.')
+
+
+def find_date():
+    while True:
+        print('##################################################')
+        print('По какое число искать новости?')
+        date_input = input('Пример [DD.MM.YYYY]: ')
+
+        try:
+            return datetime.strptime(date_input, '%d.%m.%Y').date()
+        except ValueError:
+            print('Ошибка: Неверный формат введенной даты.')
 
 
 def zdi_url():
@@ -125,6 +138,7 @@ def cve_edited(cve):
     except Exception:
         return '-----'
 
+
 def do_excel(name, df):
     today = date.today()
     today = today.strftime('%d-%m-%Y')
@@ -145,6 +159,19 @@ def open_msdriver():
         return webdriver.Edge(options=options, service=service)
     except Exception:
         input('Ошибка. Обновите драйвер в папке "utilities".')
+
+
+def open_driver():
+    try:
+        options = Options()
+        options.add_argument('disable-blink-features=AutomationControlled')
+        options.add_argument('disable-infobars')
+        options.add_argument('start-maximized')
+        options.add_argument('ignore-certificate-errors')
+        options.add_argument('log-level=3')
+        return webdriver.Chrome(options=options)
+    except Exception:
+        input('Ошибка открытия Chrome')
 
 
 def pd_placeholder(df, counter, source, data, cve, cvss, product, vul_link):
