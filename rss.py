@@ -6,6 +6,7 @@ import re
 import feedparser
 from urllib.parse import urlparse
 import os.path
+import html
 
 
 def do_table(counter, source, formatted_date, str_cve, title, link, df):
@@ -34,9 +35,9 @@ def main():
 
     file_path = 'utilities/rss.txt'
     if os.path.exists(file_path):
-        print(f'{file_path} путь к файлу')
+        print(f'Список порталов расположен в файле <{file_path}>')
     else:
-        print(f'Ожидалось наличие файла {file_path}')
+        print(f'Файл со списком RSS порталов ОТСУТСТВУЕТ <{file_path}>')
         return 0
 
     with open(file_path, 'r') as f:
@@ -56,31 +57,20 @@ def main():
 
         if is_valid_url(url):
             driver.get(url)
+            page_source = driver.page_source
+            page_source = html.unescape(page_source)
             time.sleep(2)
             try:
                 print(f'Обработка портала {source} начата')
-                feed = feedparser.parse(url)
+                feed = feedparser.parse(page_source)
                 if feed.entries:
-                    #                    title_with_cve = []
-                    #                    title_cve = []
-                    #                    for entry in feed.entries:
-                    #                        title = entry.title
-                    #                        matches = re.search(cve_pattern, title)
-                    #                       try:
-                    #                            for match in matches:
-                    #                                cve = re.findall(cve_pattern, match)
-                    #                                str_cve = ' '.join(cve)
-                    #                                title_cve.append(str_cve)
-                    #                                title_with_cve.append(title)
-                    #                        except Exception:
-                    #                            pass
-
                     for entry in feed.entries:
                         pub_date = entry.published
-                        try:
-                            date_object = datetime.strptime(pub_date, '%a, %d %b %Y %H:%M:%S %z').date()
-                        except ValueError:
-                            date_object = datetime.strptime(pub_date, '%a, %d %b %Y %H:%M:%S %Z').date()
+                        if pub_date != '':
+                            try:
+                                date_object = datetime.strptime(pub_date, '%a, %d %b %Y %H:%M:%S %z').date()
+                            except ValueError:
+                                date_object = datetime.strptime(pub_date, '%a, %d %b %Y %H:%M:%S %Z').date()
 
                         formatted_date = date_object.strftime('%d.%m.%Y')
 
@@ -88,15 +78,6 @@ def main():
 
                             link = entry.link
                             title = entry.title
-
-                            #                           if title in title_with_cve:
-                            #                               print(title)
-                            #                               index = title_with_cve.index(title)
-                            #                              str_cve = title_cve[index]
-                            #                               print(str_cve)
-                            #                               do_table(counter, source, formatted_date, str_cve, title, link, df)
-                            #                           else:
-                            driver.get(link)
                             soup = functions.get_soup(driver, link, None)
                             cve_pattern = re.compile(r'CVE-\d{4}-\d{4,7}')
                             cve_matches = soup.find_all(string=cve_pattern)
@@ -110,7 +91,7 @@ def main():
                                 for l in lst:
                                     do_table(counter, source, formatted_date, l, title, link, df)
                                     counter += 1
-                                    output_info = f'{formatted_date}: {str_cve}: {link}'
+                                    output_info = f'{formatted_date}: {l}: {link}'
                                     output_info = output_info.replace('\n', '').replace('\t', '')
                                     print(output_info)
                             else:
@@ -121,12 +102,17 @@ def main():
                     print('-------------------------------------------------------------------------------------------------')
                 else:
                     print(f'{url} не является RSS-лентой.')
+                    print(f'Обработка портала {source} завершена')
+                    print('-------------------------------------------------------------------------------------------------')
             except Exception as e:
                 print(f'Ошибка при разборе страницы: {e}')
 
     driver.close()
 
-    functions.do_excel('NEWS', df)
+    if counter != 0:
+        functions.do_excel('NEWS', df)
+    else:
+        print('Новостей нет')
 
     input()
 
